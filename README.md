@@ -38,7 +38,7 @@ Follow these steps to set up the project on your local machine:
 ## Usage
 
 Once the project is set up, you can proceed to run the demo code provided in `demo.ipynb` to see the chatbot in action.
-
+  
 ## Video explanation
 
 Please find the video explanation [here](https://youtube.com/live/RMt7UaVs33A).

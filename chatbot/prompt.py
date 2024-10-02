@@ -20,21 +20,17 @@ Use the following pieces of context to answer the user's question.
 {chat_history}
 Follow up question: """
 
-
+"""
+promptTemplate = "The user asked '{user_query}'.  Based on the retrieved documents, please provide a comprehensive and informative answer to their question."
 def get_prompt():
-    """
-    Generates prompt.
 
-    Returns:
-        ChatPromptTemplate: Prompt.
-    """
     prompt = ChatPromptTemplate(
-        input_variables=['context', 'question', 'chat_history', 'organization_name', 'organization_info', 'contact_info'],
+        input_variables=['context', 'question', 'chat_history'],
         messages=[
             SystemMessagePromptTemplate(
                 prompt=PromptTemplate(
-                    input_variables=['context', 'chat_history', 'organization_name', 'organization_info', 'contact_info'],
-                    template=system_prompt, template_format='f-string',
+                    input_variables=['question', 'chat_history'],
+                    template=promptTemplate, template_format='f-string',
                     validate_template=True
                 ), additional_kwargs={}
             ),
@@ -46,5 +42,16 @@ def get_prompt():
                 ), additional_kwargs={}
             )
         ]
+    )
+    return prompt
+"""
+
+def get_prompt():
+    prompt = PromptTemplate.from_template(
+        """
+        [INST] 
+        The user asked '{question}'.  Based on the retrieved documents, please provide a comprehensive and informative answer to their question.
+        [/INST] 
+        """
     )
     return prompt

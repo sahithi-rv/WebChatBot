@@ -1,11 +1,12 @@
-from langchain_openai import ChatOpenAI
 from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
+from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from text_to_doc import get_doc_chunks
 from web_crawler import get_data_from_website
 from prompt import get_prompt
-from langchain.chains import ConversationalRetrievalChain
-
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains import create_retrieval_chain
+from langchain.prompts import PromptTemplate
+from langchain_groq import ChatGroq
 
 def get_chroma_client():
     """
@@ -14,10 +15,10 @@ def get_chroma_client():
     Returns:
         langchain.vectorstores.chroma.Chroma: ChromaDB vector store instance.
     """
-    embedding_function = OpenAIEmbeddings()
+    embedding = FastEmbedEmbeddings()
     return Chroma(
         collection_name="website_data",
-        embedding_function=embedding_function,
+        embedding_function=embedding,
         persist_directory="data/chroma")
 
 
@@ -45,28 +46,44 @@ def make_chain():
     Returns:
         langchain.chains.ConversationalRetrievalChain: ConversationalRetrievalChain instance.
     """
+    
+    """
     model = ChatOpenAI(
             model_name="gpt-3.5-turbo",
             temperature=0.0,
             verbose=True
         )
+    """
+    llm = ChatGroq(
+        groq_api_key="unknown"
+        model_name="llama3-8b-8192"  # Or another appropriate Groq model
+    )
     vector_store = get_chroma_client()
-    prompt = get_prompt()
+    #prompt = get_prompt()
+    raw_prompt = PromptTemplate.from_template(
+        """
+        [INST] 
+        The user asked '{input}'.  Based on the retrieved documents and context {context}, please provide a comprehensive and informative answer to their question.
+        [/INST] 
+        """
+    )
 
     retriever = vector_store.as_retriever(search_type="mmr", verbose=True)
 
-    chain = ConversationalRetrievalChain.from_llm(
-        model,
-        retriever=retriever,
-        return_source_documents=True,
-        combine_docs_chain_kwargs=dict(prompt=prompt),
-        verbose=True,
-        rephrase_question=False,
-    )
+    document_chain = create_stuff_documents_chain(llm, raw_prompt)
+    chain = create_retrieval_chain(retriever, document_chain)
+    #chain = ConversationalRetrievalChain.from_llm(
+    #    llm,
+    #    retriever=retriever,
+    #    return_source_documents=True,
+    #    combine_docs_chain_kwargs=dict(prompt=prompt),
+    #    verbose=True,
+    #    rephrase_question=False,
+    #)
     return chain
 
 
-def get_response(question, organization_name, organization_info, contact_info):
+def get_response(question):
     """
     Generates a response based on the input question.
 
@@ -81,7 +98,5 @@ def get_response(question, organization_name, organization_info, contact_info):
     """
     chat_history = ""
     chain = make_chain()
-    response = chain({"question": question, "chat_history": chat_history,
-                      "organization_name": organization_name, "contact_info": contact_info,
-                      "organization_info": organization_info})
+    response = chain({"input": question, "chat_history": chat_history})
     return response['answer']
